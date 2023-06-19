@@ -10,9 +10,20 @@
 			],
 			"group": "build",
 			"options": {
-                "cwd": "file_encryptor",
-				"label": "rust: cargo build"
-			}
+				"cwd": "file_encryptor"
+			},
+			"label": "rust: cargo build"
+			
+		},
+		{
+			"type": "cargo",
+			"command": "run",
+			"problemMatcher": [
+				"$rustc",
+				"$rust-panic"
+			],
+			
+			"label": "rust: cargo run"
 		}
 	]
 }

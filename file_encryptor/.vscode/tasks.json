@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cargo",
+			"command": "build",
+			"problemMatcher": [
+				"$rustc",
+				"$rust-panic"
+			],
+			"group": "build",
+			"label": "rust: cargo build"
+		},
+		{
+			"type": "cargo",
+			"command": "run",
+			"problemMatcher": [
+				"$rustc",
+				"$rust-panic"
+			],
+			"options": {
+                "cwd": "${workspaceFolder}/src"
+            },
+			"label": "rust: cargo run"
+		}
+	]
+}
