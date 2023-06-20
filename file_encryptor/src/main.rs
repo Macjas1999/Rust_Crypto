@@ -9,7 +9,8 @@ use crypto::aes::KeySize::KeySize128;
 
 use std::io::{Read, BufRead};
 //use crypto::aes::ctr::CtrMode;
-
+use crypto::symmetriccipher::BlockEncryptor;
+use crypto::buffer::{BufferResult, WriteBuffer};
 // use aes::Aes128;
 // use block_modes::BlockMode;
 // use block_modes::block_padding::Pkcs7;
@@ -76,8 +77,7 @@ fn main() {
     let mess: String = encryp_handle(file.contents, key_nonce.key.clone(), key_nonce.nonce.clone());
     println!("{}", mess);
     println!("\n");
-    println!("\n");
-    println!("{}", encryp_handle(mess, key_nonce.key.clone(), key_nonce.nonce.clone()));
+    println!("{}", decrypt_handle(mess, key_nonce.key.clone(), key_nonce.nonce.clone()));
     println!("\n");
 }
 //Functions
@@ -110,18 +110,37 @@ fn encryp_handle(contents: String, key: [u8; 16], nonce: [u8; 16]) -> String {
     let mut output_b: Vec<u8> = Vec::new();
     let mut output_c = std::io::Cursor::new(&mut output_b);
     let mut output_buff = RefWriteBuffer::new(output_c.get_mut());
-    cipher.encrypt(&mut input_buff, &mut output_buff, false);
-
+    cipher.encrypt(&mut input_buff, &mut output_buff, false).unwrap();
+    // let output_s = match out_a {
+    //     Ok(BufferResult::Buffer(buffer)) => {
+    //         str::from_utf8(buffer).unwrap().to_string()
+    //     }
+    // };
     //cipher.process(&s_input, &mut s_output);
     //let e_output = String::from_utf8_lossy(&s_output);
     //let e_output: String = e_output.to_string(); 
+    
     let e_output = String::from_utf8_lossy(&output_b);
     let e_output: String = e_output.to_string();
     e_output
 
 }
 
-//fn decrypt_handle(message: String, key: Vec<u8>, nonce: Vec<u8>) -> String {
-//
-//    let mut decipher = crypto::aes::ctr(KeySize128, key.as_slice(), nonce.as_slice());
-//}
+fn decrypt_handle(contents: String, key: [u8; 16], nonce: [u8; 16]) -> String {
+
+   let mut decipher = crypto::aes::cbc_decryptor(KeySize128, &key, &nonce, NoPadding);
+
+   let input_b = contents.as_bytes();
+   let input_c = std::io::Cursor::new(input_b);
+   let mut input_buff = RefReadBuffer::new(input_c.get_ref());
+
+   let mut output_b: Vec<u8> = Vec::new();
+   let mut output_c = std::io::Cursor::new(&mut output_b);
+   let mut output_buff = RefWriteBuffer::new(output_c.get_mut());
+
+   decipher.decrypt(&mut input_buff, &mut output_buff, false).unwrap();
+
+   let e_output = String::from_utf8_lossy(&output_b);
+   let e_output: String = e_output.to_string();
+   e_output
+}
