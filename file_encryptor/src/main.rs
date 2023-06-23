@@ -1,29 +1,24 @@
 extern crate crypto;
 extern crate rand;
+use std::fs::File;
+use crypto::symmetriccipher::{BlockEncryptor, BlockDecryptor};
+use crypto::buffer::{ReadBuffer, WriteBuffer, BufferResult};
+use crypto::aes::{cbc_encryptor, cbc_decryptor, KeySize};
+use crypto::digest::Digest;
+use crypto::sha2::Sha256;
+use aes::cipher::consts;
 use crypto::{blockmodes::NoPadding, buffer::RefWriteBuffer};
 use crypto::buffer::RefReadBuffer;
 //use crypto::digest::Digest;
 //use crypto::sha2::Sha256;
-use crypto::symmetriccipher::SynchronousStreamCipher;
-use crypto::aes::KeySize::KeySize128;
 
 use std::io::{Read, BufRead};
-//use crypto::aes::ctr::CtrMode;
-use crypto::symmetriccipher::BlockEncryptor;
-use crypto::buffer::{BufferResult, WriteBuffer};
-// use aes::Aes128;
-// use block_modes::BlockMode;
-// use block_modes::block_padding::Pkcs7;
-// use block_modes::ctr::Ctr128;
-// use hex_literal::hex;
 
 use rand::Rng;
-//use rand::rngs::OsRng;
-use std::fs;
 
 pub struct InputFile {
     path: String,
-    contents: String,
+    contents: Vec<u8>,
 }
 //Generator key and nonce generator
 pub struct KeyAndNonce {
@@ -72,75 +67,123 @@ fn main() {
 
     println!("\n");
     println!("Directory: {}", file.path);
-    println!("Contents: {}", file.contents);
-    println!("\n");
-    let mess: String = encryp_handle(file.contents, key_nonce.key.clone(), key_nonce.nonce.clone());
-    println!("{}", mess);
-    println!("\n");
-    println!("{}", decrypt_handle(mess, key_nonce.key.clone(), key_nonce.nonce.clone()));
-    println!("\n");
+    for byte in file.contents.clone() {
+        print!("{} ", byte);
+    }
+    println!();
+
+    for byte in file.contents.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("Key: ");
+    for byte in key_nonce.key.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n");
+    print!("Nonce: ");
+    for byte in key_nonce.nonce.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n");
+
+    let encrypted_data = encryp_handle(file.contents.clone(), &key_nonce.key, &key_nonce.key);
+    println!("Encrypted: ");
+    for byte in encrypted_data.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n\n");
+    let decrypted_data = decrypt_handle(encrypted_data.clone(), &key_nonce.key, &key_nonce.key);
+    println!("Decrypted: ");
+    for byte in decrypted_data.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n")
 }
 //Functions
 ///File handling
-fn contents_of_file(in_path: String) -> String {
-    match fs::read_to_string(in_path) {
-        Ok(contents) => {
-            return contents;
-            //println!("File contents:\n{}", contents);
-        }
+fn contents_of_file(in_path: String) -> Vec<u8> {
+    let mut file = match File::open(in_path) {
+        Ok(file) => file,
         Err(error) => {
-            eprintln!("Error reading file: {}", error);
-            return String::from("Error reading file");
+            let errstr = String::from("Error reading file");
+            eprint!("Error reading file: {}", error);
+            let vec: Vec<u8> = errstr.into_bytes();
+            return vec
+        }
+    };
+    let mut contents: Vec<u8> = Vec::new();
+    match file.read_to_end(&mut contents) {
+        Ok(_) => return contents,
+        Err(_) => {
+            
+            eprint!("Failed to read the file");
+            let errstr = String::from("Failed to read the file");
+            let vec: Vec<u8> = errstr.into_bytes();
+            return vec
+        }
+    }  
+}
+
+fn encryp_handle(contents: Vec<u8>, key: &[u8; 16], nonce: &[u8; 16]) -> Vec<u8> {
+    //Cipher
+    let mut encryptor = cbc_encryptor(
+        KeySize::KeySize128,
+        key,
+        nonce,
+        crypto::blockmodes::PkcsPadding,
+    );
+
+    let mut buffer = [0; 4096];
+    let mut result = Vec::<u8>::new();
+    
+    let mut read_buffer = crypto::buffer::RefReadBuffer::new(&contents); //or use .into_boxed_slice()
+    let mut write_buffer = crypto::buffer::RefWriteBuffer::new(&mut buffer);
+
+    loop {
+        let r = encryptor.encrypt(&mut read_buffer, &mut write_buffer, true)
+            .expect("encryption error");
+
+        result.extend(write_buffer.take_read_buffer().take_remaining().iter().copied());
+
+        match r {
+            BufferResult::BufferUnderflow => break,
+            BufferResult::BufferOverflow => {}
         }
     }
+
+    result
+
 }
-fn encryp_handle(contents: String, key: [u8; 16], nonce: [u8; 16]) -> String {
-    //Cipher
-    //let mut cipher = crypto::aes::ctr(KeySize128, key.as_slice(), nonce.as_slice());
-    let mut cipher = crypto::aes::cbc_encryptor(KeySize128, &key, &nonce, NoPadding); 
-    //let mut cipher = CtrMode::new(KeySize128, &key, &nonce);
-    //Processing files
-    //let s_input: Vec<u8> = contents.as_bytes().to_vec();
-    //let mut s_output: Vec<u8> = s_input.clone();
-    let input_b = contents.as_bytes();
-    let input_c = std::io::Cursor::new(input_b);
-    let mut input_buff = RefReadBuffer::new(input_c.get_ref());
-    //let mut s_output: Vec<u8> = contents.as_bytes().to_vec();
-    //let mut s_output: Vec<u8> = Vec::with_capacity(s_input.len());
-    let mut output_b: Vec<u8> = Vec::new();
-    let mut output_c = std::io::Cursor::new(&mut output_b);
-    let mut output_buff = RefWriteBuffer::new(output_c.get_mut());
-    cipher.encrypt(&mut input_buff, &mut output_buff, false).unwrap();
-    // let output_s = match out_a {
-    //     Ok(BufferResult::Buffer(buffer)) => {
-    //         str::from_utf8(buffer).unwrap().to_string()
-    //     }
-    // };
-    //cipher.process(&s_input, &mut s_output);
-    //let e_output = String::from_utf8_lossy(&s_output);
-    //let e_output: String = e_output.to_string(); 
+
+fn decrypt_handle(contents: Vec<u8>, key: &[u8; 16], nonce: &[u8; 16]) -> Vec<u8> {
+    let mut decryptor = cbc_decryptor(
+        KeySize::KeySize128,
+        key,
+        nonce,
+        crypto::blockmodes::PkcsPadding,
+    );
+
+    let mut buffer = [0; 4096];
+    let mut result = Vec::<u8>::new();
     
-    let e_output = String::from_utf8_lossy(&output_b);
-    let e_output: String = e_output.to_string();
-    e_output
+    let mut read_buffer = crypto::buffer::RefReadBuffer::new(&contents); //or use .into_boxed_slice()
+    let mut write_buffer = crypto::buffer::RefWriteBuffer::new(&mut buffer);
 
-}
+    loop {
+        let r = decryptor.decrypt(&mut read_buffer, &mut write_buffer, true)
+            .expect("decryption error");
 
-fn decrypt_handle(contents: String, key: [u8; 16], nonce: [u8; 16]) -> String {
+        result.extend(write_buffer.take_read_buffer().take_remaining().iter().copied());
 
-   let mut decipher = crypto::aes::cbc_decryptor(KeySize128, &key, &nonce, NoPadding);
-
-   let input_b = contents.as_bytes();
-   let input_c = std::io::Cursor::new(input_b);
-   let mut input_buff = RefReadBuffer::new(input_c.get_ref());
-
-   let mut output_b: Vec<u8> = Vec::new();
-   let mut output_c = std::io::Cursor::new(&mut output_b);
-   let mut output_buff = RefWriteBuffer::new(output_c.get_mut());
-
-   decipher.decrypt(&mut input_buff, &mut output_buff, false).unwrap();
-
-   let e_output = String::from_utf8_lossy(&output_b);
-   let e_output: String = e_output.to_string();
-   e_output
+        match r {
+            BufferResult::BufferUnderflow => break,
+            BufferResult::BufferOverflow => {}
+        }
+    }
+    result
 }
