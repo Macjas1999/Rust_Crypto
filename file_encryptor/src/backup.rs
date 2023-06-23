@@ -144,3 +144,61 @@ fn decrypt_handle(contents: String, key: [u8; 16], nonce: [u8; 16]) -> String {
    let e_output: String = e_output.to_string();
    e_output
 }
+
+
+//the right one
+
+
+fn main() {
+    let in_path: String = String::from("/home/maciej/Desktop/Rust/Crypto/Rust_Crypto/test.txt");
+    let file = InputFile {
+        path: in_path.clone(),
+        contents: contents_of_file(in_path),
+    };
+
+    let mut key_nonce = KeyAndNonce {
+        key: [0; 16],
+        nonce: [0; 16],
+    };
+    key_nonce.generate_key();
+    key_nonce.generate_nonce();
+
+    println!("\n");
+    println!("Directory: {}", file.path);
+    for byte in file.contents.clone() {
+        print!("{} ", byte);
+    }
+    println!();
+
+    for byte in file.contents.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("Key: ");
+    for byte in key_nonce.key.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n");
+    print!("Nonce: ");
+    for byte in key_nonce.nonce.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n");
+
+    let encrypted_data = encryp_handle(file.contents.clone(), &key_nonce.key, &key_nonce.key);
+    println!("Encrypted: ");
+    for byte in encrypted_data.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n\n");
+    let decrypted_data = decrypt_handle(encrypted_data.clone(), &key_nonce.key, &key_nonce.key);
+    println!("Decrypted: ");
+    for byte in decrypted_data.clone() {
+        let singlechar = char::from(byte);
+        print!("{}", singlechar);
+    }
+    print!("\n")
+}
