@@ -144,9 +144,16 @@ fn main() {
             //let in_path: String = String::from("/home/maciej/Desktop/Rust/Crypto/Rust_Crypto/test.txt");
             
         } else if input_char == 'd' {
-            println!("Write here your message to decrypt");
-            let input_message: Vec<u8> = read_string().into_bytes();
+            //println!("Write here your message to decrypt");
+            //let input_message: Vec<u8> = read_string().into_bytes();
             //let input_message = read_encrypted();
+            println!("Provide a path to a file");
+            let in_path = read_string();
+            let file = InputFile {
+                path: in_path.clone(),
+                contents: contents_of_file(in_path),
+            };
+
             let mut key_nonce = KeyAndNonce {
                 key: [0; 16],
                 nonce: [0; 16],
@@ -156,7 +163,7 @@ fn main() {
             println!("\nSupply nonce");
             key_nonce.nonce = read_keyandnonce(read_string());
             print!("\n\n");
-            let decrypted_data = decrypt_handle(input_message.clone(), &key_nonce.key, &key_nonce.key);
+            let decrypted_data = decrypt_handle(file.contents.clone(), &key_nonce.key, &key_nonce.key);
             println!("Decrypted: ");
             for byte in decrypted_data.clone() {
                 let singlechar = char::from(byte);
@@ -294,7 +301,7 @@ fn decrypt_handle(contents: Vec<u8>, key: &[u8; 16], nonce: &[u8; 16]) -> Vec<u8
         nonce,
         crypto::blockmodes::PkcsPadding,
     );
-
+    //let data = contents.as_slice();
     let mut buffer = [0; 4096];
     let mut result = Vec::<u8>::new();
     
@@ -312,5 +319,8 @@ fn decrypt_handle(contents: Vec<u8>, key: &[u8; 16], nonce: &[u8; 16]) -> Vec<u8
             BufferResult::BufferOverflow => {}
         }
     }
+    let padding_length = crypto::blockmodes::pkcs_padding::pad_with_length(result.len(), 16);
+    result.extend(vec![padding_length as u8; padding_length]);
+
     result
 }
